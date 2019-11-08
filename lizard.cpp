@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <semaphore.h>
 
 using namespace std;
 
@@ -90,6 +91,9 @@ using namespace std;
  * Declare global variables here
  */
 
+//  variable used for lizard crossing
+sem_t lizardsToCross; //CS MR
+
 /**************************************************/
 /* Please leave these variables alone.  They are  */
 /* used to check the proper functioning of your   */
@@ -152,7 +156,7 @@ int Cat::getId()
  {
 	 // launch the thread to simulate the cat's behavior	 
 	 // pthread_create ( .............., (void *) this);
-	 
+     pthread_create(&_thread, NULL, runThread, (void*)this); // CS MR
  }
  
  /**
@@ -163,6 +167,7 @@ int Cat::getId()
  void Cat::wait()
  {
 	 // wait for the thread to terminate
+     pthread_join(_thread, NULL); // CS MR
  }
  
  /**
@@ -298,7 +303,7 @@ int Lizard::getId()
  void Lizard::wait()
  {
 	 // wait for the thread to terminate
-	 
+     pthread_join(_thread, NULL); // CS MR
 	 // pthread_join (.....)
  }
  
@@ -333,23 +338,29 @@ void * Lizard::runThread( void * param )
        * are already completed - see the comments.
        */
 
+        /*
+         * Each lizard will sleep, once awake it will check if
+         *      it is safe to cross to the Monkey Grass,
+         *      if it is safe, it will cross and then eat, otherwise
+         *      it will wait until it is safe.
+         *      Once it has eaten, the lizard will check 
+         *      if it is safe to cross to the Sago Palm,
+         *      if it is then it will cross and then sleep.
+         * */
+        while(running)
+        {
+            myLizard->sleepNow();
+            myLizard->sago2MonkeyGrassIsSafe();
+            myLizard->crossSago2MonkeyGrass();
+            myLizard->madeIt2MonkeyGrass();
+            myLizard->eat();
+            myLizard->monkeyGrass2SagoIsSafe();
+            myLizard->crossMonkeyGrass2Sago();
+            myLizard->madeIt2Sago();
+        }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        /******************* CS MR **********************/
     }
 
 	pthread_exit(NULL);
@@ -403,7 +414,8 @@ void Lizard::sago2MonkeyGrassIsSafe()
 		cout << std::flush;
     }
 
-	
+    // Blocks the lizard if it is unsafe to cross.
+    sem_wait(&lizardsToCross); // CS MR
 
 
 	if (debug)
@@ -475,7 +487,8 @@ void Lizard::madeIt2MonkeyGrass()
     }
 
 
-
+    // Releases blocked lizards and tells waiting lizards it is safe to cross.
+    sem_post(&lizardsToCross); // CS MR
 
 
 }
@@ -527,7 +540,8 @@ void Lizard::monkeyGrass2SagoIsSafe()
     }
 
 
-
+    // Blocks lizards from crossing if it is unsafe
+    sem_wait(&lizardsToCross); // CS MR
 
 
 	if (debug)
@@ -598,6 +612,9 @@ void Lizard::madeIt2Sago()
 		cout << "[" << _id << "] made the  monkey grass -> sago  crossing" << endl;
 		cout << std::flush;
     }
+
+    // Unblocks any one blocked lizard because it makes it safe to cross.
+    sem_post(&lizardsToCross); // CS MR
 }
 
  
@@ -618,7 +635,8 @@ int main(int argc, char **argv)
 	 * Declare local variables
      */
 
-
+    //  integer used for indexing loops
+    int i; // CS MR
 
 
 	/*
@@ -648,25 +666,47 @@ int main(int argc, char **argv)
      * Initialize locks and/or semaphores
      */
 
-
+    //  initializing to the maximum allowed lizards to cross
+    sem_init(&lizardsToCross, 0, MAX_LIZARD_CROSSING); // CS MR
 
 
 	/*
      * Create NUM_LIZARDS lizard threads
-     */
-	Lizard** allLizards = new Lizard*[NUM_LIZARDS];
-    
-    allLizards[0] = new Lizard(0);
+     *
+     * Starts the lizard pointer array to a number of lizards.
+     * Then loops around the array to initialize the lizard objects.
+     * */ 
+    Lizard** allLizards = new Lizard*[NUM_LIZARDS];
+    for(i = 0; i < NUM_LIZARDS; i++)
+        allLizards[i] = new Lizard(i);
+
+    /******************* CS MR **********************/
 
     /*
      * Create NUM_CATS cat threads
-     */
-	 
+     *
+     * Starts the cats pointer array with a the number of cats defined.
+     * Loops around the pointers to initialize them as objects.
+     * */
+    Cat** allCats = new Cat*[NUM_CATS];
+    for(i = 0; i < NUM_CATS; i++)
+        allCats[i] = new Cat(i);
+
+    /******************* CS MR **********************/
 
 	/*
 	 * Run NUM_LIZARDS and NUM_CATS threads
+     *
+     * Loops through the cats and lizards arrays and runs the threads.
 	 */
 
+    for(i = 0; i < NUM_LIZARDS; i++)
+        allLizards[i]->run();
+
+    for(i = 0; i < NUM_CATS; i++)
+        allCats[i]->run();
+
+    /******************* CS MR **********************/
 
 	/*
      * Now let the world run for a while
@@ -679,29 +719,41 @@ int main(int argc, char **argv)
      */
 	running = 0;
 
+    if(debug)
+        cout << " The World Has Ended " << endl;
 
     /*
      * Wait until all threads terminate
      */
 
+    for(i = 0; i < NUM_LIZARDS; i++)
+        allLizards[i]->wait();
 
+    for(i = 0; i < NUM_CATS; i++)
+        allCats[i]->wait();
 
-
-
+    /******************* CS MR **********************/
 
 	/*
      * Delete the locks and semaphores
      */
 	 
-	 
+    sem_destroy(&lizardsToCross); // CS MR
 	 
 	/*
 	 * Delete all cat and lizard objects
 	 */
 	 
-	delete allLizards[0];
-	delete allLizards;
+    for(i = 0; i < NUM_LIZARDS; i++)
+        delete allLizards[i];
 
+    for(i = 0; i < NUM_CATS; i++)
+        delete allCats[i];
+
+    delete allLizards;
+    delete allCats;
+
+    /******************* CS MR **********************/
 
 
 	/*

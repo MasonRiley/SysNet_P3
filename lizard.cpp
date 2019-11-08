@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <semaphore.h>
 
 using namespace std;
 
@@ -89,6 +90,8 @@ using namespace std;
 /*
  * Declare global variables here
  */
+
+
 
 /**************************************************/
 /* Please leave these variables alone.  They are  */

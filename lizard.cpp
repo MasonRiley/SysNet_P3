@@ -6,7 +6,7 @@
 /*   lizard.cpp                                                */
 /*                                                             */
 /* Be sure to use the -lpthread option for the compile command */
-/*   g++ -g -Wall lizard.cpp -o lizard -lpthread               */
+/*   g++ -g -Wall -std=c++11 lizard.cpp -o lizard -pthread     */
 /*                                                             */
 /* Execute with the -d command-line option to enable debugging */
 /* output.  For example,                                       */
@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <semaphore.h>
 
 using namespace std;
 
@@ -91,8 +90,6 @@ using namespace std;
  * Declare global variables here
  */
 
-
-
 /**************************************************/
 /* Please leave these variables alone.  They are  */
 /* used to check the proper functioning of your   */
@@ -116,11 +113,12 @@ class Cat {
 	
 	public:
 		Cat (int id);
+		int getId();
 		void run();
 		void wait();
-		
 	private:
-		void* runThread(void *param);
+		static void* runThread(void *param);
+		
 		void sleepNow();
 };
 
@@ -135,13 +133,26 @@ Cat::Cat (int id)
 }
 
 /**
+ * Returns the Id of the cat.
+ *
+ * @return the Id of a cat
+ */
+int Cat::getId()
+{
+	return _id;
+}
+
+
+/**
  * Launches a cat thread.
  * 
  * Status: Incomplete - Make changes to this code.
  */
  void Cat::run() 
  {
-	 // launch the thread to simulate the cat's behavior
+	 // launch the thread to simulate the cat's behavior	 
+	 // pthread_create ( .............., (void *) this);
+	 
  }
  
  /**
@@ -167,15 +178,17 @@ Cat::Cat (int id)
   */
 void * Cat::runThread( void * param )
 {
+	Cat* myCat = (Cat*) param;
+	
 	if (debug)
     {
-		cout << "[" << _id << "] cat is alive\n";
+		cout << "[" << myCat->getId() << "] cat is alive\n";
 		cout << std::flush;
     }
 
 	while(running)
     {
-		sleepNow();
+		myCat->sleepNow();
 
 
 
@@ -228,12 +241,12 @@ class Lizard {
 
 	public:
 		Lizard(int id);
+		int getId();
 		void run();
 		void wait();
 		
 	private:
-		void* runThread(void *param);
-		void sleepNow();
+		static void* runThread(void *param);
 		
 		void sago2MonkeyGrassIsSafe();
 		void crossSago2MonkeyGrass();
@@ -242,6 +255,7 @@ class Lizard {
 		void monkeyGrass2SagoIsSafe();
 		void crossMonkeyGrass2Sago();
 		void madeIt2Sago();
+		void sleepNow();
 	
 };
 
@@ -256,13 +270,24 @@ Lizard::Lizard (int id)
 }
 
 /**
+ * Returns the Id of the lizard.
+ *
+ * @return the Id of a lizard
+ */
+int Lizard::getId()
+{
+	return _id;
+}
+
+/**
  * Launches a lizard thread.
  * 
  * Status: Incomplete - Make changes to this code.
  */
  void Lizard::run() 
  {
-	 // launch the thread to simulate the cat's behavior
+	 // launch the thread to simulate the lizard's behavior
+	 pthread_create ( &_thread, NULL, runThread, (void *) this);
  }
  
  /**
@@ -273,6 +298,8 @@ Lizard::Lizard (int id)
  void Lizard::wait()
  {
 	 // wait for the thread to terminate
+	 
+	 // pthread_join (.....)
  }
  
  /**
@@ -288,9 +315,11 @@ Lizard::Lizard (int id)
   */
 void * Lizard::runThread( void * param )
 {
+	Lizard* myLizard = (Lizard *) param;
+	
 	if (debug)
     {
-      cout << "[" << _id << "] lizard is alive" << endl;
+      cout << "[" << myLizard->getId() << "] lizard is alive" << endl;
       cout << std::flush;
     }
 
@@ -625,12 +654,18 @@ int main(int argc, char **argv)
 	/*
      * Create NUM_LIZARDS lizard threads
      */
-
+	Lizard** allLizards = new Lizard*[NUM_LIZARDS];
+    
+    allLizards[0] = new Lizard(0);
 
     /*
      * Create NUM_CATS cat threads
      */
+	 
 
+	/*
+	 * Run NUM_LIZARDS and NUM_CATS threads
+	 */
 
 
 	/*
@@ -657,6 +692,15 @@ int main(int argc, char **argv)
 	/*
      * Delete the locks and semaphores
      */
+	 
+	 
+	 
+	/*
+	 * Delete all cat and lizard objects
+	 */
+	 
+	delete allLizards[0];
+	delete allLizards;
 
 
 
